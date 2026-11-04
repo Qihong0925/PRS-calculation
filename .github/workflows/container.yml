@@ -47,6 +47,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - uses: nf-core/setup-nextflow@v2
         with:
           version: '24.10.5'
@@ -54,6 +59,9 @@ jobs:
         run: |
           nextflow run main.nf -profile test,docker \
             --container ${{ needs.build.outputs.image }}:sha-${GITHUB_SHA::7}
+      - name: Show log on failure
+        if: failure()
+        run: tail -n 80 .nextflow.log
       - name: Check outputs
         run: |
           test -s results_test/final/test.final_scores.tsv
