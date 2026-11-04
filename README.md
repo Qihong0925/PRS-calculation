@@ -18,9 +18,10 @@ nextflow run main.nf -profile slurm,singularity \
 # or a samplesheet (.csv/.tsv) with columns: sample, bam[, index]
 nextflow run main.nf -profile slurm,singularity --input samples.tsv --fasta /path/to/GRCh38.fa
 ```
-The only required inputs are the alignments (indexed BAM or CRAM) and the reference FASTA they
-were aligned to (with `.fai`). The pipeline first checks that every panel REF allele matches this
-FASTA and stops if any does not.
+The only required inputs are **germline** alignments (indexed BAM or CRAM) and the **GRCh38**
+reference FASTA they were aligned to (chr-prefixed contigs, with `.fai`; ALT contigs are fine).
+The pipeline stops with a plain message if the FASTA is GRCh37/hg19 or lacks the `chr` prefix, and
+checks that every panel REF allele matches the FASTA. Run `nextflow run main.nf --help` for all options.
 
 Test on a tiny synthetic data set (about 1 min):
 ```bash
@@ -38,6 +39,7 @@ nextflow run main.nf -profile test,singularity   # or test,docker / test,conda
 | `--strip_prefix` / `--strip_suffix` | none | Trim file names to sample names (glob input) |
 | `--min_mapq` / `--min_baseq` | 20 / 20 | Read and base quality filters |
 | `--force_expected` | none | TSV (column `site` CHROM:POS or `ID`) of sites not trusted in this batch; scored at 2 x EAF |
+| `--queue` | cluster default | SLURM partition for all jobs (with `-profile slurm`) |
 | `--genotype_max_forks` | 0 (no limit) | Max concurrent genotyping jobs, e.g. 1 for files on tiered/archived storage |
 | `--genotype_retries` / `--retry_wait_sec` | 2 / 0 | Retries per sample and wait between them |
 
@@ -56,6 +58,21 @@ profile inside it.
 nextflow run main.nf -profile slurm,singularity --container ghcr.io/qihong0925/prs-from-bam:latest \
     --input '/path/to/bams/*.bam' --fasta /path/to/GRCh38.fa
 ```
+
+## Interpreting the scores
+- **Use germline samples only.** The pipeline cannot tell tumour from normal: a tumour BAM produces
+  a score without any warning, but somatic copy-number changes and LOH distort the genotypes.
+- **Primary score**: `<panel>_z` / `<panel>_percentile` in `final_scores.tsv` (BCAC 313 is the
+  primary panel). Missing sites are filled with the expected dosage 2 x EAF; `n_missing` counts them.
+- **Standardisation**: z and percentiles use the CanRisk population mean and SD
+  (`resources/canrisk_standardisation.tsv`), which were derived in women of **European ancestry**.
+  For other ancestries the raw score ranks samples, but the percentile is not calibrated:
+  check ancestry before reporting percentiles.
+- **Sensitivity columns**: `_bam` scores use the calls exactly as genotyped; `_flagged_as_expected`
+  sets validation-flagged sites (`panels/*/validation/site_validation.flagged.tsv`) to 2 x EAF;
+  the secondary panel (BRIDGES 306) gives an independent estimate. Large differences for a sample
+  point to genotyping problems at a few sites (see `genotypes/<sample>.gt.tsv`).
+- A PRS is a research measure here; it is not a clinical risk estimate on its own.
 
 ## Outputs
 | Path | Contents |

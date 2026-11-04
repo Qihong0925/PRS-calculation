@@ -35,6 +35,62 @@ def findIndex(f) {
     return found
 }
 
+def helpMessage() {
+    return """
+    PRS-from-BAM: breast cancer polygenic risk scores (CanRisk BCAC 313 / BRIDGES 306) from germline WGS
+
+    Usage:
+      nextflow run Qihong0925/PRS-calculation -profile <slurm,>singularity \\
+          --input '/path/to/bams/*.bam' --fasta /path/to/GRCh38.fa --batch MY_BATCH --outdir results
+
+    Required:
+      --input            BAM/CRAM glob (quote it), or samplesheet .csv/.tsv with columns
+                         'sample' and 'bam' (or 'cram'), optional 'index'. GERMLINE samples only.
+      --fasta            GRCh38 FASTA the alignments were made against (chr-prefixed contigs, with .fai)
+
+    Optional:
+      --outdir           Output directory [${params.outdir}]
+      --batch            Label used in output file names [${params.batch}]
+      --panels           Comma-separated panels in --panel_dir; first = primary [${params.panels}]
+      --strip_prefix     Remove this prefix from file names to get sample names (glob input)
+      --strip_suffix     Remove this suffix instead of .bam/.cram (e.g. .dedup.bqsr.bam)
+      --min_mapq         Minimum read mapping quality [${params.min_mapq}]
+      --min_baseq        Minimum base quality [${params.min_baseq}]
+      --force_expected   TSV (column 'site' CHROM:POS or 'ID') of sites scored at 2 x EAF
+      --queue            SLURM partition for all jobs (with -profile slurm)
+      --genotype_max_forks  Max concurrent genotyping jobs; e.g. 3 for archived storage (0 = no limit)
+      --genotype_retries    Retries per sample [${params.genotype_retries}]
+      --retry_wait_sec      Seconds to wait before a retry [${params.retry_wait_sec}]
+
+    Profiles (-profile, comma-separated):
+      singularity | docker | conda   software (container recommended)
+      slurm                          submit jobs to SLURM
+      test                           tiny synthetic data set (about 1 min)
+    """.stripIndent()
+}
+
+def checkReference(fai) {
+    def len = [:]
+    fai.readLines().each { line ->
+        def f = line.tokenize('\t')
+        len[f[0]] = f[1] as long
+    }
+    if (!len.containsKey('chr1')) {
+        if (len.containsKey('1')) {
+            error "Reference ${params.fasta} has contigs named '1', '2', ... The panels use GRCh38 with 'chr' prefixes (chr1, chr2, ...). Use the chr-prefixed GRCh38 FASTA your BAMs were aligned to."
+        }
+        error "Reference ${params.fasta} has no contig 'chr1'. A GRCh38 reference with chr-prefixed contigs is required."
+    }
+    if (len['chr1'] == 249250621L) {
+        error "Reference ${params.fasta} looks like GRCh37/hg19 (chr1 length 249,250,621). The panels are GRCh38: re-align to GRCh38 or use the GRCh38 FASTA."
+    }
+    if (len['chr1'] != 248956422L) {
+        error "Reference ${params.fasta}: chr1 length ${len['chr1']} is not GRCh38 (248,956,422)."
+    }
+    def n_alt = len.keySet().count { k -> k.endsWith('_alt') }
+    log.info "Reference: GRCh38, ${len.size()} contigs (${n_alt} ALT)"
+}
+
 process CHECK_REFERENCE {
     tag "${fasta.name}"
     publishDir "${params.outdir}/qc", mode: params.publish_mode
@@ -194,11 +250,15 @@ process SUMMARY {
 
 workflow {
     main:
+    if (params.help) {
+        log.info helpMessage()
+        return
+    }
     if (!params.input) {
-        error "Missing --input (BAM/CRAM glob, or samplesheet .csv/.tsv with columns 'sample' and 'bam')"
+        error "Missing --input (BAM/CRAM glob, or samplesheet .csv/.tsv with columns 'sample' and 'bam'). Run with --help for usage."
     }
     if (!params.fasta) {
-        error "Missing --fasta (reference FASTA the BAMs were aligned to; needs a .fai index)"
+        error "Missing --fasta (GRCh38 FASTA the BAMs were aligned to; needs a .fai index). Run with --help for usage."
     }
 
     // Reference
@@ -206,6 +266,9 @@ workflow {
     def fai = file("${params.fasta}.fai")
     if (!fai.exists()) {
         error "Missing FASTA index ${fai}; run: samtools faidx ${params.fasta}"
+    }
+    if (params.check_genome) {
+        checkReference(fai)
     }
     ch_ref = channel.value([fasta, fai])
 
