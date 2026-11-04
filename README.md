@@ -87,7 +87,7 @@ Built: 2026-10-27 by Qihong.
 - Weights: CanRisk knowledge base, "What variants are used in the PRS?"
   (BCAC_313_PRS.prs, BRIDGES_306_PRS.prs; GRCh37; downloaded 2026-10-27)
 - Liftover: UCSC hg19ToHg38.over.chain.gz (pyliftover)
-- Reference: Homo_sapiens.GRCh38_p13CH623.genome.fa (BMK alignment reference)
+- Reference: GRCh38.p13 full assembly including ALT contigs (used for REF-allele checks)
 - Position cross-check: PGS Catalog PGS000004 hmPOS_GRCh38 (HmPOS_date 2022-07-29)
 - Validation: gnomAD v4.1 genomes (AF_nfe)
 
