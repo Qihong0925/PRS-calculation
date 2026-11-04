@@ -1,0 +1,22 @@
+# Pipeline runtime environment, used by -profile conda and to build the container (Dockerfile).
+# Versions match the environment used for the original analysis:
+#   bcftools/htslib/samtools = HPC modules; numpy/pandas/scipy = env/prs_env.lock.yml.
+#   python patch level and matplotlib are not pinned: the pinned builds conflict with htslib 1.19.1
+#   (matplotlib is used for figures only).
+name: prs-from-bam
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - bcftools=1.19
+  - htslib=1.19.1
+  - samtools=1.19.2
+  - python=3.11
+  - numpy=1.26.4
+  - pandas=2.2.3
+  - scipy=1.17.1
+  - matplotlib-base>=3.8
+  - procps-ng
+  - pip
+  - pip:
+      - pyliftover==0.4.1

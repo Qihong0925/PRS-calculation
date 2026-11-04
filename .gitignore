@@ -1,0 +1,15 @@
+# Site-specific settings
+config/local.sh
+*.local.config
+# Run logs (contain cluster paths)
+logs/
+*.log
+# Nextflow
+work/
+.nextflow/
+.nextflow.log*
+results*/
+# OS / Python
+.DS_Store
+__pycache__/
+*.pyc

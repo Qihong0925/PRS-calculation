@@ -1,0 +1,2 @@
+chr37	pos37	ref37	effect37	chrom38	pos38	ref38	alt38	effect38	rsid	evidence
+1	145604302	C	CT	chr1	145830798	C	CA	CA	rs143384623	CanRisk 1-145604302-C-CT (insertion T12>T13, EAF 0.349). Region inverted in GRCh38: GRCh37 +/-30bp flank reverse-complement matches GRCh38 chr1:145830781-145830839; polyT becomes polyA chr1:145830799-145830810 (Ensembl GRCh38). Insertion left-aligned to anchor C at 145830798. gnomAD v4.1 chr1:145830798 C>CA AF_nfe 0.376 consistent with EAF; CA>C AF_nfe 0.0005.
