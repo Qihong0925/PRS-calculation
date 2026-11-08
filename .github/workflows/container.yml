@@ -60,6 +60,11 @@ jobs:
         run: |
           nextflow run main.nf -profile test,docker \
             --container ${{ needs.build.outputs.image }}:sha-${GITHUB_SHA::7}
+      - name: Run tumour test profile in the container
+        run: |
+          nextflow run main.nf -profile test_tumour,docker \
+            --container ${{ needs.build.outputs.image }}:sha-${GITHUB_SHA::7}
+          cat results_test_tumour/tumour/test_tumour.tumour_summary.tsv | cut -f1-12
       - name: Show log on failure
         if: failure()
         run: tail -n 80 .nextflow.log

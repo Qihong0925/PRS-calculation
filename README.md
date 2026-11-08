@@ -39,6 +39,7 @@ nextflow run main.nf -profile test,singularity   # or test,docker / test,conda
 | `--strip_prefix` / `--strip_suffix` | none | Trim file names to sample names (glob input) |
 | `--min_mapq` / `--min_baseq` | 20 / 20 | Read and base quality filters |
 | `--force_expected` | none | TSV (column `site` CHROM:POS or `ID`) of sites not trusted in this batch; scored at 2 x EAF |
+| `--tumour_sheet` | none | Tumour mode instead of `--input` (see below) |
 | `--queue` | cluster default | SLURM partition for all jobs (with `-profile slurm`) |
 | `--genotype_max_forks` | 0 (no limit) | Max concurrent genotyping jobs, e.g. 1 for files on tiered/archived storage |
 | `--genotype_retries` / `--retry_wait_sec` | 2 / 0 | Retries per sample and wait between them |
@@ -58,6 +59,47 @@ profile inside it.
 nextflow run main.nf -profile slurm,singularity --container ghcr.io/qihong0925/prs-from-bam:latest \
     --input '/path/to/bams/*.bam' --fasta /path/to/GRCh38.fa
 ```
+
+## Tumour mode: tumour vs germline PRS
+Compares each tumour with its matched normal to test whether tumours preferentially retain
+risk or protective alleles at PRS sites (loss of heterozygosity / allelic imbalance).
+```bash
+nextflow run main.nf -profile slurm,singularity --tumour_sheet tumours.tsv \
+    --fasta /path/to/GRCh38.fa --batch MY_BATCH --outdir results_tumour
+```
+`tumours.tsv` (tab- or comma-separated) has the columns `tumour`, `normal`, `tumour_path`,
+`normal_path` and `purity` (fraction, e.g. 0.45). A normal can be listed with several tumours.
+Relative paths are resolved against the sheet's folder. Tumours with purity below `--min_purity`
+(0.15) are listed in `qc/tumour_excluded.tsv` and not analysed. Copy number is not used.
+
+Method, at each germline-heterozygous PRS site with tumour depth >= `--tumour_min_dp` (20), using
+the tumour effect-allele fraction v and purity p:
+
+| Tumour effect-allele VAF | Call | Tumour-cell effect dosage |
+|---|---|---|
+| v >= 0.70 | effect allele retained (any purity) | 2 |
+| 0.55 <= v < 0.70 | retained if v >= 0.5 + 0.8 x p/2, otherwise no change | 2 or 1 |
+| 0.45 < v < 0.55 | no change (any purity) | 1 |
+| 0.30 < v <= 0.45 | lost if v <= 0.5 - 0.8 x p/2, otherwise no change | 0 or 1 |
+| v <= 0.30 | effect allele lost (any purity) | 0 |
+
+p/2 is the largest VAF shift complete LOH can produce at purity p; 0.8 (`--loh_purity_fraction`)
+requires 80% of it. Homozygous, missing, forced and low-depth sites keep the germline dosage.
+The tumour-cell PRS uses these dosages; the germline PRS is the normal's score. The risk allele is
+the effect allele when its weight is positive, otherwise the other allele.
+
+Outputs in `tumour/`:
+- `<batch>.tumour_prs.tsv`: per tumour and panel, germline / tumour-cell / directly called scores
+  (raw, z, percentile), their differences, and counts of risk- vs protective-allele retention;
+- `<batch>.tumour_sites.tsv`: per tumour, panel and site, the genotypes, depths, VAFs and calls;
+- `<batch>.tumour_summary.tsv`: cohort tests per panel (paired Wilcoxon and sign test on
+  tumour-cell minus germline z; binomial test of risk vs protective retention; Wilcoxon test of the
+  tumour-minus-normal risk-allele VAF shift), for all tumours and for one tumour per patient
+  (highest purity);
+- `<batch>.tumour_vs_germline.png`.
+
+Test: `nextflow run main.nf -profile test_tumour,singularity` (simulated tumours with known allele
+loss; `tests/data/expected_tumour_events.tsv` holds the truth).
 
 ## Interpreting the scores
 - **Use germline samples only.** The pipeline cannot tell tumour from normal: a tumour BAM produces

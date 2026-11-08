@@ -1,0 +1,4 @@
+tumour	normal	tumour_path	normal_path	purity
+S1T	S1	bams/S1T.bam	bams/S1.bam	0.6
+S2T	S2	bams/S2T.bam	bams/S2.bam	0.3
+S3T	S3	bams/S3T.bam	bams/S3.cram	0.1

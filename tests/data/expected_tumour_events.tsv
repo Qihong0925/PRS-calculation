@@ -1,0 +1,10 @@
+tumour	normal	purity	pos	event	tumour_cell_alt_fraction	depth	alt_reads
+S1T	S1	0.6	1000	keep_alt	1.0	80	64
+S1T	S1	0.6	7000	keep_ref	0.0	80	16
+S1T	S1	0.6	9000	partial	0.75	80	52
+S1T	S1	0.6	11000	none	0.5	80	40
+S2T	S2	0.3	1000	low_depth	1.0	12	8
+S2T	S2	0.3	3000	keep_alt	1.0	80	52
+S2T	S2	0.3	5000	keep_ref	0.0	80	28
+S3T	S3	0.1	7000	partial	0.75	80	42
+S3T	S3	0.1	9000	none	0.5	80	40
